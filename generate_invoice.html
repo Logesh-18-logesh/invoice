@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice Generation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+        }
+        table td {
+            text-align: left;
+        }
+        table td:last-child {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <h1>Invoice for your order</h1>
+    <table border="1" cellpadding="5" cellspacing="0" width="100%">
+        <tr>
+            <td align="left" width="30%">
+                <img src="amazon.png" alt="Logo">
+            </td>
+            <td align="right" width="70%">
+                <h2>Seller address:</h2>
+                <h2 id="seller-name"></h2>
+                <p id="seller-address"></p>
+                <p id="seller-gst-info"></p>
+            </td>
+        </tr>
+    </table>
+    <table border="1" cellpadding="5" cellspacing="0" width="100%">
+        <tr>
+            <td align="left" width="30%">
+                <h2>Invoice</h2>
+                <p id="order-info"></p>
+                <p id="invoice-info"></p>
+                <p id="reverse-charge-info"></p>
+            </td>
+            <td align="right" width="70%">
+                <h2>Bill To:</h2>
+                <p id="billing-info"></p>
+            </td>
+        </tr>
+        <tr>
+            <td align="left" width="30%">
+                <h2>Place of Supply:</h2>
+                <p id="place-of-supply-info"></p>
+                <h2>Place of Delivery:</h2>
+                <p id="place-of-delivery-info"></p>
+            </td>
+            <td align="right" width="70%">
+                <h2>Ship To:</h2>
+                <p id="shipping-info"></p>
+            </td>
+        </tr>
+    </table>
+    <table border="1" cellpadding="5" cellspacing="0" width="100%">
+        <tr>
+            <th align="left" width="25%">Description</th>
+            <th align="center" width="15%">Unit Price</th>
+            <th align="center" width="10%">Quantity</th>
+            <th align="center" width="10%">Discount</th>
+            <th align="center" width="10%">Tax Rate</th>
+            <th align="center" width="15%">Net Amount</th>
+            <th align="center" width="15%">Tax Amount</th>
+            <th align="center" width="20%">Total Amount</th>
+        </tr>
+        <!-- Populate items dynamically -->
+    </table>
+    <p id="amount-in-words"></p>
+    <p id="total-amount"></p>
+    
+        <tr>
+            <td align="right" width="30%">
+                <img src="signature.png" alt="Signature" width="120" height="40">
+                <p>For <span id="seller-name-bottom"></span></p>
+                <p>Authorised Signatory</p>
+            </td>
+        </tr>
+    
+    <script>
+        // Get data from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const formData = JSON.parse(decodeURIComponent(urlParams.get('data')));
+
+        // Fill data into HTML elements
+        document.getElementById('seller-name').textContent = formData.seller_name;
+        document.getElementById('seller-address').textContent = formData.seller_address + ', ' + formData.seller_city + ', ' + formData.seller_state + ', ' + formData.seller_pincode;
+        document.getElementById('seller-gst-info').textContent = 'PAN No.: ' + formData.seller_pan_no + ', GST Registration No.: ' + formData.seller_gst_no;
+
+        document.getElementById('order-info').textContent = 'Order No.: ' + formData.order_no + ', Order Date: ' + formData.order_date;
+        document.getElementById('invoice-info').textContent = 'Invoice No.: ' + formData.invoice_no + ', Invoice Date: ' + formData.invoice_date;
+        document.getElementById('reverse-charge-info').textContent = 'Reverse Charge: ' + (formData.reverse_charge ? 'Yes' : 'No');
+
+        document.getElementById('billing-info').textContent = formData.billing_name + ', ' + formData.billing_address + ', ' + formData.billing_city + ', ' + formData.billing_state + ', ' + formData.billing_pincode + ', State/UT Code: ' + formData.billing_state_ut_code;
+
+        if (formData['same-as-billing']) {
+            document.getElementById('shipping-info').textContent = document.getElementById('billing-info').textContent;
+        } else {
+            document.getElementById('shipping-info').textContent = formData.shipping_name + ', ' + formData.shipping_address + ', ' + formData.shipping_city + ', ' + formData.shipping_state + ', ' + formData.shipping_pincode + ', State/UT Code: ' + formData.shipping_state_ut_code;
+        }
+
+        document.getElementById('place-of-supply-info').textContent = formData.place_of_supply;
+        document.getElementById('place-of-delivery-info').textContent = formData.place_of_delivery;
+
+        // Items will be populated dynamically based on the form data
+        const itemsTable = document.querySelector('table:last-of-type');
+        const items = formData.items;
+        let totalAmount = 0;
+        items.forEach(item => {
+            let row = itemsTable.insertRow(); // Insert a new row for each item
+            const cells = [];
+            for (let i = 0; i < 8; i++) {
+                cells.push(row.insertCell()); // Insert cells for all columns
+            }
+
+            cells[0].textContent = item.description;
+            cells[1].textContent = '₹ ' + item.unit_price;
+            cells[2].textContent = item.quantity;
+            cells[3].textContent = item.discount + '%';
+            cells[4].textContent = item.tax_rate + '%';
+            const netAmount = (item.unit_price * item.quantity) - ((item.discount / 100) * item.unit_price * item.quantity);
+            cells[5].textContent = '₹ ' + netAmount.toFixed(2);
+            const taxAmount = (netAmount * item.tax_rate) / 100;
+            cells[6].textContent = '₹ ' + taxAmount.toFixed(2);
+            const totalItemAmount = netAmount + taxAmount;
+            cells[7].textContent = '₹ ' + totalItemAmount.toFixed(2);
+            totalAmount += totalItemAmount;
+        });
+
+        // Convert total amount to words
+        document.getElementById('amount-in-words').textContent = 'Amount in words: ' + numberToWords(Math.floor(totalAmount)) + ' rupees and ' + numberToWords(Math.round((totalAmount % 1) * 100)) + ' paise';
+        document.getElementById('total-amount').textContent = 'Total Amount: ₹ ' + totalAmount.toFixed(2);
+        document.getElementById('seller-name-bottom').textContent = formData.seller_name;
+
+        function numberToWords(number) {
+            const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+            const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+            if (number < 20) {
+                return ones[number];
+            } else if (number < 100) {
+                return tens[Math.floor(number / 10)] + (number % 10 !== 0 ? ' ' + ones[number % 10] : '');
+            } else if (number < 1000) {
+                return ones[Math.floor(number / 100)] + ' hundred' + (number % 100 !== 0 ? ' and ' + numberToWords(number % 100) : '');
+            } else if (number < 1000000) {
+                return numberToWords(Math.floor(number / 1000)) + ' thousand' + (number % 1000 !== 0 ? ' ' + numberToWords(number % 1000) : '');
+            } else if (number < 1000000000) {
+                return numberToWords(Math.floor(number / 1000000)) + ' million' + (number % 1000000 !== 0 ? ' ' + numberToWords(number % 1000000) : '');
+            } else if (number < 1000000000000) {
+                return numberToWords(Math.floor(number / 1000000000)) + ' billion' + (number % 1000000000 !== 0 ? ' ' + numberToWords(number % 1000000000) : '');
+            }
+        }
+    </script>
+</body>
+</html>
